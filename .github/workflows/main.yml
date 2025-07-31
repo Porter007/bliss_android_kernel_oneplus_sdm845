@@ -6,29 +6,38 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout kernel source
-      uses: actions/checkout@v4
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
 
-    - name: Set up MemKernel as a module (M-OUT) with specified name
-      run: |
-        curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
+      - name: Mark workspace as safe directory for Git
+        run: sudo git config --system --add safe.directory /github/workspace
 
-    - name: Android kernel build
-      uses: lemniskett/android-kernel-actions@master
-      id: build
-      env:
-        NAME: Fajita
-      with:
-        arch: arm64
-        compiler: gcc/4.9
-        defconfig: bliss_defconfig
-        image: Image.gz-dtb
+      # Download Proton Clang
+      - name: Set up Proton Clang toolchain
+        run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
 
-    - name: Upload Kernel and Module
-      uses: actions/upload-artifact@v4
-      with:
-        name: moduleandkernel
-        path: |
-          ${{ steps.build.outputs.outfile }}
-          ./out/drivers/memkernel/memkernel.ko
+      - name: Set up MemKernel as a module (M-OUT) with specified name
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
+
+      # Kernel build step using Proton Clang
+      - name: Android kernel build
+        uses: lemniskett/android-kernel-actions@master
+        id: build
+        with:
+          arch: arm64
+          compiler: proton-clang
+          clang_path: ${{ github.workspace }}/clang
+          defconfig: bliss_defconfig           # Adjust if needed
+          image: Image.gz-dtb
+
+      - name: Upload Kernel and Module
+        uses: actions/upload-artifact@v4
+        with:
+          name: moduleandkernel
+          path: |
+            ${{ steps.build.outputs.outfile }}
+            ./out/drivers/memkernel/memkernel.ko
