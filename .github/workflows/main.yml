@@ -14,24 +14,32 @@ jobs:
       - name: Mark workspace as safe directory for Git
         run: sudo git config --system --add safe.directory /github/workspace
 
-      - name: Set up MemKernel as a module (M-OUT) with specified name
+      - name: Download and Extract mcd-clang
+        run: |
+          # Adjust the URL to the latest release/tarball from the mcd-clang repo
+          wget https://github.com/mcdachpappe/mcd-clang/releases/latest/download/mcd-clang.tar.xz
+          mkdir mcd-clang && tar -xf mcd-clang.tar.xz -C mcd-clang --strip-components=1
+
+      - name: Set up MemKernel as module (if needed)
         run: |
           curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
 
-      # Kernel build step using Proton Clang
-      - name: Android kernel build
-        uses: lemniskett/android-kernel-actions@master
-        id: build
-        with:
-          arch: arm64
-          compiler: clang/14
-          defconfig: bliss_defconfig           # Adjust if needed
-          image: Image.gz-dtb
+      - name: Build Kernel using mcd-clang
+        env:
+          PATH: ${{ github.workspace }}/mcd-clang/bin:${PATH}
+          CC: ${{ github.workspace }}/mcd-clang/bin/clang
+          CXX: ${{ github.workspace }}/mcd-clang/bin/clang++
+          LD_LIBRARY_PATH: ${{ github.workspace }}/mcd-clang/lib:${LD_LIBRARY_PATH}
+          ARCH: arm64
+          SUBARCH: arm64
+        run: |
+          make O=out bliss_defconfig
+          make -j$(nproc) O=out CC=clang ARCH=arm64
 
       - name: Upload Kernel and Module
         uses: actions/upload-artifact@v4
         with:
           name: moduleandkernel
           path: |
-            ${{ steps.build.outputs.outfile }}
+            out/arch/arm64/boot/Image.gz-dtb
             ./out/drivers/memkernel/memkernel.ko
