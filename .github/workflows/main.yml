@@ -21,7 +21,7 @@ jobs:
         NAME: Fajita
       with:
         arch: arm64
-        compiler: gcc/12
+        compiler: clang/12
         defconfig: bliss_defconfig
         image: Image.gz-dtb
 
