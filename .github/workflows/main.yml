@@ -1,47 +1,43 @@
-name: Kernel Build with mcd-clang
+name: OnePlus 6T Kernel Build (Android R)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout kernel source
+      - name: Check out kernel source
         uses: actions/checkout@v4
 
       - name: Mark workspace as safe directory for Git
         run: sudo git config --system --add safe.directory /github/workspace
 
-      - name: Download and Extract mcd-clang Toolchain
+      - name: Install dependencies
         run: |
-          # IMPORTANT: Replace this URL with a valid mcd-clang tarball from the releases page:
-          # https://github.com/mcdachpappe/mcd-clang/releases
-          wget https://github.com/mcdachpappe/mcd-clang/releases/download/v13.0.0/mcd-clang.tar.xz
-          mkdir mcd-clang
-          tar -xf mcd-clang.tar.xz -C mcd-clang --strip-components=1
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ca-certificates ccache curl flex git kmod libssl-dev libncurses-dev python3 python3-pip unzip wget zip zlib1g-dev
 
-      - name: Set up MemKernel as module (if needed)
+      - name: Download AOSP Clang 12
         run: |
-          curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
+          wget https://releases.llvm.org/12.0.0/clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz
+          tar -xf clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz
+          mv clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04 clang
 
-      - name: Build Kernel with mcd-clang
+      - name: Build kernel
         env:
-          PATH: ${{ github.workspace }}/mcd-clang/bin:${PATH}
-          CC: ${{ github.workspace }}/mcd-clang/bin/clang
-          CXX: ${{ github.workspace }}/mcd-clang/bin/clang++
-          LD_LIBRARY_PATH: ${{ github.workspace }}/mcd-clang/lib:${LD_LIBRARY_PATH}
           ARCH: arm64
           SUBARCH: arm64
+          CLANG_PATH: ${{ github.workspace }}/clang/bin
         run: |
-          make O=out bliss_defconfig
-          make -j$(nproc) O=out CC=clang ARCH=arm64
+          export PATH=$CLANG_PATH:$PATH
+          # Replace with actual defconfig present in your source, e.g., sdm845_defconfig or bliss_defconfig
+          make O=out ARCH=arm64 bliss_defconfig
+          make -j$(nproc) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Upload Kernel and Module
+      - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: moduleandkernel
-          path: |
-            out/arch/arm64/boot/Image.gz-dtb
-            ./out/drivers/memkernel/memkernel.ko
+          name: Kernel Image
+          path: out/arch/arm64/boot/Image.gz-dtb
