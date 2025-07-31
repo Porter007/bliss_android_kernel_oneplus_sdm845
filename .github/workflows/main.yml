@@ -1,4 +1,4 @@
-name: Kernel Build
+name: Kernel Build (Google AOSP Toolchain)
 
 on:
   workflow_dispatch:
@@ -10,25 +10,42 @@ jobs:
     - name: Checkout kernel source
       uses: actions/checkout@v4
 
+    - name: Mark workspace as safe directory for Git
+      run: sudo git config --system --add safe.directory /github/workspace
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ca-certificates ccache curl flex git kmod libssl-dev libncurses-dev python3 python3-pip unzip wget zip zlib1g-dev
+
+    - name: Download and extract AOSP Clang 12 (Android 11)
+      run: |
+        wget https://releases.llvm.org/12.0.0/clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz
+        tar -xf clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz
+        mv clang+llvm-12.0.0-x86_64-linux-gnu-ubuntu-20.04 clang
+
     - name: Set up MemKernel as a module (M-OUT) with specified name
       run: |
         curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M
 
-    - name: Android kernel build
-      uses: lemniskett/android-kernel-actions@master
-      id: build
+    - name: Build kernel with Google Clang
       env:
-        NAME: Fajita
-      with:
-        arch: arm64
-        compiler: proton-clang/master
-        defconfig: bliss_defconfig
-        image: Image.gz-dtb
+        ARCH: arm64
+        SUBARCH: arm64
+        CLANG_PATH: ${{ github.workspace }}/clang/bin
+      run: |
+        export PATH=$CLANG_PATH:$PATH
+        make O=out ARCH=arm64 bliss_defconfig
+        make -j$(nproc) O=out \
+          ARCH=arm64 \
+          CC=clang \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
     - name: Upload Kernel and Module
       uses: actions/upload-artifact@v4
       with:
         name: moduleandkernel
         path: |
-          ${{ steps.build.outputs.outfile }}
+          out/arch/arm64/boot/Image.gz-dtb
           ./out/drivers/memkernel/memkernel.ko
