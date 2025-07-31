@@ -14,11 +14,6 @@ jobs:
       - name: Mark workspace as safe directory for Git
         run: sudo git config --system --add safe.directory /github/workspace
 
-      # Download Proton Clang
-      - name: Set up Proton Clang toolchain
-        run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
-
       - name: Set up MemKernel as a module (M-OUT) with specified name
         run: |
           curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
@@ -29,8 +24,7 @@ jobs:
         id: build
         with:
           arch: arm64
-          compiler: proton-clang/master
-          clang_path: ${{ github.workspace }}/clang
+          compiler: clang/14
           defconfig: bliss_defconfig           # Adjust if needed
           image: Image.gz-dtb
 
