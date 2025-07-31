@@ -29,7 +29,7 @@ jobs:
         id: build
         with:
           arch: arm64
-          compiler: proton-clang
+          compiler: proton-clang/master
           clang_path: ${{ github.workspace }}/clang
           defconfig: bliss_defconfig           # Adjust if needed
           image: Image.gz-dtb
