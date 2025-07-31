@@ -1,4 +1,4 @@
-name: Kernel Build
+name: Kernel Build with mcd-clang
 
 on:
   workflow_dispatch:
@@ -14,17 +14,19 @@ jobs:
       - name: Mark workspace as safe directory for Git
         run: sudo git config --system --add safe.directory /github/workspace
 
-      - name: Download and Extract mcd-clang
+      - name: Download and Extract mcd-clang Toolchain
         run: |
-          # Adjust the URL to the latest release/tarball from the mcd-clang repo
-          wget https://github.com/mcdachpappe/mcd-clang/releases/latest/download/mcd-clang.tar.xz
-          mkdir mcd-clang && tar -xf mcd-clang.tar.xz -C mcd-clang --strip-components=1
+          # IMPORTANT: Replace this URL with a valid mcd-clang tarball from the releases page:
+          # https://github.com/mcdachpappe/mcd-clang/releases
+          wget https://github.com/mcdachpappe/mcd-clang/releases/download/v13.0.0/mcd-clang.tar.xz
+          mkdir mcd-clang
+          tar -xf mcd-clang.tar.xz -C mcd-clang --strip-components=1
 
       - name: Set up MemKernel as module (if needed)
         run: |
           curl -LSs "https://raw.githubusercontent.com/Porter007/MemKernel/main/kernel/setup.sh" | bash -s M fajita
 
-      - name: Build Kernel using mcd-clang
+      - name: Build Kernel with mcd-clang
         env:
           PATH: ${{ github.workspace }}/mcd-clang/bin:${PATH}
           CC: ${{ github.workspace }}/mcd-clang/bin/clang
